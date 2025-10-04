@@ -168,7 +168,7 @@ fun AppNavHost(
                 onTemplateSelected = { template ->
                     // Navigate back to edit screen with selected template
                     navController.popBackStack()
-                    // TODO: Update resume with selected template
+                    // The template will be handled by the edit screen
                 }
             )
         }

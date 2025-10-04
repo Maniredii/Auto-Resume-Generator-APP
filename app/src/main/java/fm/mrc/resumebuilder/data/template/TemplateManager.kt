@@ -13,6 +13,11 @@ object TemplateManager {
      */
     fun getAllTemplates(): List<ResumeTemplate> {
         return listOf(
+            // XML Layout Templates
+            createSimpleXmlTemplate(),
+            createModernXmlTemplate(),
+            createCreativeXmlTemplate(),
+            
             // Modern Templates
             createModernTemplate(),
             createMinimalistTemplate(),
@@ -62,6 +67,148 @@ object TemplateManager {
     }
     
     // Template Definitions
+    
+    // XML Layout Templates
+    private fun createSimpleXmlTemplate(): ResumeTemplate {
+        return ResumeTemplate(
+            id = "simple_xml",
+            name = "Simple XML",
+            description = "Clean and simple XML layout template",
+            category = TemplateCategory.CLASSIC,
+            previewColor = Color(0xFF424242),
+            isPremium = false,
+            layoutConfig = LayoutConfig(
+                headerStyle = HeaderStyle(
+                    showAvatar = false,
+                    avatarSize = 0f,
+                    nameStyle = TextStyle.LARGE_BOLD,
+                    titleStyle = TextStyle.MEDIUM,
+                    contactLayout = ContactLayout.HORIZONTAL
+                ),
+                sectionStyle = SectionStyle(
+                    showIcons = false,
+                    sectionSpacing = 20f,
+                    itemSpacing = 12f,
+                    bulletStyle = BulletStyle.DOT
+                ),
+                colorScheme = ColorScheme(
+                    primary = Color(0xFF424242),
+                    secondary = Color(0xFF616161),
+                    background = Color(0xFFFFFFFF),
+                    surface = Color(0xFFFFFFFF),
+                    onPrimary = Color(0xFFFFFFFF),
+                    onSecondary = Color(0xFFFFFFFF),
+                    onBackground = Color(0xFF212121),
+                    onSurface = Color(0xFF424242)
+                ),
+                typography = TypographyConfig(
+                    fontFamily = "Arial",
+                    headingSize = 14f,
+                    bodySize = 12f,
+                    smallSize = 10f
+                ),
+                spacing = SpacingConfig(
+                    margin = 16f,
+                    padding = 12f,
+                    lineSpacing = 1.2f
+                )
+            )
+        )
+    }
+    
+    private fun createModernXmlTemplate(): ResumeTemplate {
+        return ResumeTemplate(
+            id = "modern_xml",
+            name = "Modern XML",
+            description = "Contemporary XML layout with blue accent",
+            category = TemplateCategory.MODERN,
+            previewColor = Color(0xFF2196F3),
+            isPremium = false,
+            layoutConfig = LayoutConfig(
+                headerStyle = HeaderStyle(
+                    showAvatar = false,
+                    avatarSize = 0f,
+                    nameStyle = TextStyle.LARGE_BOLD,
+                    titleStyle = TextStyle.MEDIUM,
+                    contactLayout = ContactLayout.GRID
+                ),
+                sectionStyle = SectionStyle(
+                    showIcons = false,
+                    sectionSpacing = 24f,
+                    itemSpacing = 16f,
+                    bulletStyle = BulletStyle.DOT
+                ),
+                colorScheme = ColorScheme(
+                    primary = Color(0xFF2196F3),
+                    secondary = Color(0xFF1976D2),
+                    background = Color(0xFFFFFFFF),
+                    surface = Color(0xFFF5F5F5),
+                    onPrimary = Color(0xFFFFFFFF),
+                    onSecondary = Color(0xFFFFFFFF),
+                    onBackground = Color(0xFF212121),
+                    onSurface = Color(0xFF424242)
+                ),
+                typography = TypographyConfig(
+                    fontFamily = "Roboto",
+                    headingSize = 16f,
+                    bodySize = 13f,
+                    smallSize = 11f
+                ),
+                spacing = SpacingConfig(
+                    margin = 20f,
+                    padding = 16f,
+                    lineSpacing = 1.4f
+                )
+            )
+        )
+    }
+    
+    private fun createCreativeXmlTemplate(): ResumeTemplate {
+        return ResumeTemplate(
+            id = "creative_xml",
+            name = "Creative XML",
+            description = "Bold and artistic XML layout design",
+            category = TemplateCategory.CREATIVE,
+            previewColor = Color(0xFFE91E63),
+            isPremium = false,
+            layoutConfig = LayoutConfig(
+                headerStyle = HeaderStyle(
+                    showAvatar = false,
+                    avatarSize = 0f,
+                    nameStyle = TextStyle.LARGE_BOLD,
+                    titleStyle = TextStyle.MEDIUM,
+                    contactLayout = ContactLayout.GRID
+                ),
+                sectionStyle = SectionStyle(
+                    showIcons = true,
+                    sectionSpacing = 26f,
+                    itemSpacing = 18f,
+                    bulletStyle = BulletStyle.ARROW
+                ),
+                colorScheme = ColorScheme(
+                    primary = Color(0xFFE91E63),
+                    secondary = Color(0xFFC2185B),
+                    background = Color(0xFFFFFFFF),
+                    surface = Color(0xFFFCE4EC),
+                    onPrimary = Color(0xFFFFFFFF),
+                    onSecondary = Color(0xFFFFFFFF),
+                    onBackground = Color(0xFF212121),
+                    onSurface = Color(0xFF424242)
+                ),
+                typography = TypographyConfig(
+                    fontFamily = "Montserrat",
+                    headingSize = 18f,
+                    bodySize = 13f,
+                    smallSize = 11f
+                ),
+                spacing = SpacingConfig(
+                    margin = 20f,
+                    padding = 16f,
+                    lineSpacing = 1.5f
+                )
+            )
+        )
+    }
     
     private fun createModernTemplate(): ResumeTemplate {
         return ResumeTemplate(

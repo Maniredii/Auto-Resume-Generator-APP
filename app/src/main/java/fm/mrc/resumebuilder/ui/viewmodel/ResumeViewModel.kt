@@ -131,6 +131,10 @@ class ResumeViewModel(
         _uiState.value = _uiState.value.copy(projects = projects)
     }
 
+    fun updateTemplate(template: String) {
+        _uiState.value = _uiState.value.copy(template = template)
+    }
+
     fun addProject() {
         val currentProjects = _uiState.value.projects.toMutableList()
         currentProjects.add(
@@ -192,6 +196,18 @@ class ResumeViewModel(
 
     fun clearError() {
         _errorMessage.value = null
+    }
+
+    fun autoSave() {
+        val currentState = _uiState.value
+        if (currentState.personal.fullName.isNotBlank() || 
+            currentState.summary.isNotBlank() || 
+            currentState.skills.isNotEmpty() ||
+            currentState.education.isNotEmpty() ||
+            currentState.experience.isNotEmpty() ||
+            currentState.projects.isNotEmpty()) {
+            saveResume()
+        }
     }
 
     class Factory(private val repository: ResumeRepository) : ViewModelProvider.Factory {

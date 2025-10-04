@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginBottom="16dp">
+
+    <!-- Project Title and Link -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="4dp">
+
+        <TextView
+            android:id="@+id/tv_project_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Mobile Banking App"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/black" />
+
+        <TextView
+            android:id="@+id/tv_project_link"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="github.com/username/project"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            android:autoLink="web" />
+
+    </LinearLayout>
+
+    <!-- Description -->
+    <TextView
+        android:id="@+id/tv_project_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Developed a secure mobile banking application using React Native and Node.js. Implemented biometric authentication and real-time transaction processing."
+        android:textSize="12sp"
+            android:textColor="@android:color/black"
+        android:layout_marginBottom="6dp"
+        android:lineSpacingMultiplier="1.2" />
+
+    <!-- Technologies -->
+    <TextView
+        android:id="@+id/tv_project_tech"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="React Native, Node.js, MongoDB, JWT"
+        android:textSize="11sp"
+        android:textColor="@android:color/darker_gray"
+        android:background="#F5F5F5"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="4dp" />
+
+</LinearLayout>

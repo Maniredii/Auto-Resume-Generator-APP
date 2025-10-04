@@ -1,5 +1,6 @@
 package fm.mrc.resumebuilder.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -60,6 +61,15 @@ fun ResumeEditScreen(
         }
     }
 
+    // Auto-save functionality
+    LaunchedEffect(uiState.personal, uiState.summary, uiState.skills, uiState.education, uiState.experience, uiState.projects) {
+        if (!uiState.isNewResume && uiState.id.isNotBlank()) {
+            // Debounce auto-save to avoid too frequent saves
+            kotlinx.coroutines.delay(2000) // 2 seconds delay
+            viewModel.autoSave()
+        }
+    }
+
     // Show error message if any
     errorMessage?.let { message ->
         LaunchedEffect(message) {
@@ -68,27 +78,69 @@ fun ResumeEditScreen(
         }
     }
 
+    // Template selection state
+    var showTemplateDialog by remember { mutableStateOf(false) }
+    val availableTemplates = remember { 
+        listOf(
+            "simple_xml" to "Simple XML",
+            "modern_xml" to "Modern XML", 
+            "creative_xml" to "Creative XML",
+            "modern" to "Modern Compose",
+            "classic" to "Classic Compose",
+            "creative" to "Creative Compose"
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (uiState.isNewResume) "New Resume" else "Edit Resume") },
+                title = { 
+                    Text(
+                        text = if (uiState.isNewResume) "New Resume" else "Edit Resume",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 actions = {
-                    IconButton(onClick = onNavigateToTemplateSelection) {
-                        Icon(Icons.Default.Settings, contentDescription = "Change Template")
+                    IconButton(onClick = { showTemplateDialog = true }) {
+                        Icon(
+                            Icons.Default.Settings, 
+                            contentDescription = "Change Template",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(
+                        onClick = { 
+                            viewModel.saveResume()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Done, 
+                            contentDescription = "Save Resume",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                     if (!uiState.isNewResume) {
                         IconButton(
                             onClick = { onNavigateToPreview(uiState.id) }
                         ) {
-                            Icon(Icons.Default.Edit, contentDescription = "Preview")
+                            Icon(
+                                Icons.Default.Edit, 
+                                contentDescription = "Preview",
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
                         }
                     }
-                }
+                },
             )
         },
         bottomBar = {
@@ -211,6 +263,48 @@ fun ResumeEditScreen(
             }
             }
         }
+    }
+
+    // Template Selection Dialog
+    if (showTemplateDialog) {
+        AlertDialog(
+            onDismissRequest = { showTemplateDialog = false },
+            title = { Text("Select Template") },
+            text = {
+                Column {
+                    availableTemplates.forEach { (templateId, templateName) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.updateTemplate(templateId)
+                                    showTemplateDialog = false
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = uiState.template == templateId,
+                                onClick = {
+                                    viewModel.updateTemplate(templateId)
+                                    showTemplateDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = templateName,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTemplateDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

@@ -35,6 +35,19 @@ interface ResumeDao {
     suspend fun getAllResumesList(): List<ResumeEntity>
     
     /**
+     * Search resumes by name
+     */
+    @Query("SELECT * FROM resumes WHERE name LIKE '%' || :query || '%' ORDER BY id")
+    fun searchResumes(query: String): Flow<List<ResumeEntity>>
+    
+    /**
+     * Get resumes by template (Note: This requires complex JSON querying, 
+     * for now we'll filter in the repository layer)
+     */
+    @Query("SELECT * FROM resumes ORDER BY id")
+    fun getAllResumesForTemplate(): Flow<List<ResumeEntity>>
+    
+    /**
      * Get a specific resume by ID
      */
     @Query("SELECT * FROM resumes WHERE id = :id")

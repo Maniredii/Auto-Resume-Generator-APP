@@ -10,6 +10,8 @@ import android.graphics.Rect
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.core.content.FileProvider
 import fm.mrc.resumebuilder.data.model.Resume
 import kotlinx.coroutines.Dispatchers
@@ -194,6 +196,130 @@ class PdfExporter {
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)
     }
+
+    /**
+     * Share resume via email with pre-filled content
+     */
+    fun shareResumeViaEmail(context: Context, pdfUri: Uri, resumeName: String, recipientEmail: String = "") {
+        val emailIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "message/rfc822"
+            putExtra(Intent.EXTRA_EMAIL, if (recipientEmail.isNotEmpty()) arrayOf(recipientEmail) else null)
+            putExtra(Intent.EXTRA_SUBJECT, "$resumeName - Resume")
+            putExtra(Intent.EXTRA_TEXT, "Dear Hiring Manager,\n\nI am writing to express my interest in the position. Please find my resume attached for your review.\n\nBest regards,\n$resumeName")
+            putExtra(Intent.EXTRA_STREAM, pdfUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        
+        val chooser = Intent.createChooser(emailIntent, "Send Resume via Email")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
+    }
+
+    /**
+     * Share resume via WhatsApp
+     */
+    fun shareResumeViaWhatsApp(context: Context, pdfUri: Uri, resumeName: String) {
+        val whatsappIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            setPackage("com.whatsapp")
+            putExtra(Intent.EXTRA_STREAM, pdfUri)
+            putExtra(Intent.EXTRA_TEXT, "Hi! Please find my resume attached. $resumeName")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        
+        try {
+            context.startActivity(whatsappIntent)
+        } catch (e: Exception) {
+            // Fallback to general share if WhatsApp is not installed
+            shareResumePdf(context, pdfUri, resumeName)
+        }
+    }
+
+    /**
+     * Share resume via LinkedIn
+     */
+    fun shareResumeViaLinkedIn(context: Context, pdfUri: Uri, resumeName: String) {
+        val linkedinIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            setPackage("com.linkedin.android")
+            putExtra(Intent.EXTRA_STREAM, pdfUri)
+            putExtra(Intent.EXTRA_TEXT, "Sharing my resume: $resumeName")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        
+        try {
+            context.startActivity(linkedinIntent)
+        } catch (e: Exception) {
+            // Fallback to general share if LinkedIn is not installed
+            shareResumePdf(context, pdfUri, resumeName)
+        }
+    }
+
+    /**
+     * Share resume via Telegram
+     */
+    fun shareResumeViaTelegram(context: Context, pdfUri: Uri, resumeName: String) {
+        val telegramIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            setPackage("org.telegram.messenger")
+            putExtra(Intent.EXTRA_STREAM, pdfUri)
+            putExtra(Intent.EXTRA_TEXT, "My resume: $resumeName")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        
+        try {
+            context.startActivity(telegramIntent)
+        } catch (e: Exception) {
+            // Fallback to general share if Telegram is not installed
+            shareResumePdf(context, pdfUri, resumeName)
+        }
+    }
+
+    /**
+     * Get available sharing options based on installed apps
+     */
+    fun getAvailableSharingOptions(context: Context): List<SharingOption> {
+        val options = mutableListOf<SharingOption>()
+        
+        // Always available - general share
+        options.add(SharingOption("General Share", "Share via any app", Icons.Default.Share))
+        
+        // Check for specific apps
+        val packageManager = context.packageManager
+        
+        if (isAppInstalled(packageManager, "com.whatsapp")) {
+            options.add(SharingOption("WhatsApp", "Share via WhatsApp", Icons.Default.Phone))
+        }
+        
+        if (isAppInstalled(packageManager, "com.linkedin.android")) {
+            options.add(SharingOption("LinkedIn", "Share via LinkedIn", Icons.Default.Person))
+        }
+        
+        if (isAppInstalled(packageManager, "org.telegram.messenger")) {
+            options.add(SharingOption("Telegram", "Share via Telegram", Icons.Default.Phone))
+        }
+        
+        if (isAppInstalled(packageManager, "com.google.android.gm")) {
+            options.add(SharingOption("Gmail", "Share via Gmail", Icons.Default.Email))
+        }
+        
+        return options
+    }
+
+    private fun isAppInstalled(packageManager: android.content.pm.PackageManager, packageName: String): Boolean {
+        return try {
+            packageManager.getPackageInfo(packageName, 0)
+            true
+        } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+            false
+        }
+    }
+
+    data class SharingOption(
+        val name: String,
+        val description: String,
+        val icon: androidx.compose.ui.graphics.vector.ImageVector
+    )
     
     private fun createPaint(textSize: Float, typeface: Int): Paint {
         return Paint().apply {

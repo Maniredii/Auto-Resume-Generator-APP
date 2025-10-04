@@ -14,7 +14,7 @@ import fm.mrc.resumebuilder.data.entity.ResumeEntity
  */
 @Database(
     entities = [ResumeEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

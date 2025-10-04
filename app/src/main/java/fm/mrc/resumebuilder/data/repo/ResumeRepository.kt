@@ -89,6 +89,25 @@ open class ResumeRepository(
     suspend fun getResumeCount(): Int {
         return resumeDao.getResumeCount()
     }
+    
+    /**
+     * Search resumes by name
+     */
+    fun searchResumes(query: String): Flow<List<Resume>> {
+        return resumeDao.searchResumes(query).map { entities ->
+            entities.map { it.toResume() }
+        }
+    }
+    
+    /**
+     * Get resumes by template (filtered in application layer)
+     */
+    fun getResumesByTemplate(template: String): Flow<List<Resume>> {
+        return resumeDao.getAllResumesForTemplate().map { entities ->
+            entities.map { it.toResume() }
+                .filter { it.metadata.template == template }
+        }
+    }
 }
 
 /**

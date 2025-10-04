@@ -34,6 +34,13 @@ import fm.mrc.resumebuilder.data.model.*
 import fm.mrc.resumebuilder.ui.viewmodel.ResumeViewModel
 import fm.mrc.resumebuilder.utils.PdfExporter
 import fm.mrc.resumebuilder.utils.PdfExportHelper
+import fm.mrc.resumebuilder.utils.XmlTemplateRenderer
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import android.net.Uri
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 
@@ -58,6 +65,8 @@ fun ResumePreviewScreen(
     var exportError by remember { mutableStateOf<String?>(null) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
+    var showShareDialog by remember { mutableStateOf(false) }
+    var pdfUri by remember { mutableStateOf<Uri?>(null) }
     
     // Helper function to create Resume from UI state
     fun createResumeFromState(): Resume {
@@ -181,17 +190,31 @@ fun ResumePreviewScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Resume Preview") },
+                title = { 
+                    Text(
+                        text = "Resume Preview",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = onNavigateToEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                        Icon(
+                            Icons.Default.Edit, 
+                            contentDescription = "Edit",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
-                }
+                },
             )
         },
         bottomBar = {
@@ -212,12 +235,9 @@ fun ResumePreviewScreen(
                                     exportError = null
                                     try {
                                         val resume = createResumeFromState()
-                                        val pdfUri = pdfExporter.exportResumeToPdf(context, resume)
-                                        pdfExporter.shareResumePdf(
-                                            context, 
-                                            pdfUri, 
-                                            resume.personal.fullName.ifBlank { "Resume" }
-                                        )
+                                        val generatedPdfUri = pdfExporter.exportResumeToPdf(context, resume)
+                                        pdfUri = generatedPdfUri
+                                        showShareDialog = true
                                     } catch (e: Exception) {
                                         exportError = e.message
                                     } finally {
@@ -301,7 +321,8 @@ fun ResumePreviewScreen(
                 }
                 else -> {
                     ResumePreviewContent(
-                        resume = createResumeFromState()
+                        resume = createResumeFromState(),
+                        template = uiState.template
                     )
                 }
             }
@@ -335,10 +356,50 @@ fun ResumePreviewScreen(
             }
         )
     }
+
+    // Share dialog
+    if (showShareDialog && pdfUri != null) {
+        ShareDialog(
+            pdfUri = pdfUri!!,
+            resumeName = uiState.personal.fullName.ifBlank { "Resume" },
+            onDismiss = { showShareDialog = false },
+            pdfExporter = pdfExporter
+        )
+    }
 }
 
 @Composable
 private fun ResumePreviewContent(
+    resume: Resume,
+    template: String = "simple",
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    
+    // Check if this is an XML template
+    val isXmlTemplate = template.endsWith("_xml")
+    
+    if (isXmlTemplate) {
+        // Render XML template
+        AndroidView(
+            factory = { context ->
+                XmlTemplateRenderer.renderResumeToView(context, resume, template)
+            },
+            modifier = modifier.fillMaxSize()
+        )
+    } else {
+        // Render Compose template based on template selection
+        when (template) {
+            "simple" -> SimpleTemplatePreview(resume = resume, modifier = modifier)
+            "modern" -> ModernTemplatePreview(resume = resume, modifier = modifier)
+            "creative" -> CreativeTemplatePreview(resume = resume, modifier = modifier)
+            else -> ComposeResumePreview(resume = resume, modifier = modifier)
+        }
+    }
+}
+
+@Composable
+private fun ComposeResumePreview(
     resume: Resume,
     modifier: Modifier = Modifier
 ) {
@@ -800,6 +861,567 @@ private fun ProjectPreviewItem(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ShareDialog(
+    pdfUri: Uri,
+    resumeName: String,
+    onDismiss: () -> Unit,
+    pdfExporter: PdfExporter
+) {
+    val context = LocalContext.current
+    val sharingOptions = remember { pdfExporter.getAvailableSharingOptions(context) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Share Resume") },
+        text = {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(sharingOptions) { option ->
+                    SharingOptionItem(
+                        option = option,
+                        onClick = {
+                            when (option.name) {
+                                "General Share" -> pdfExporter.shareResumePdf(context, pdfUri, resumeName)
+                                "WhatsApp" -> pdfExporter.shareResumeViaWhatsApp(context, pdfUri, resumeName)
+                                "LinkedIn" -> pdfExporter.shareResumeViaLinkedIn(context, pdfUri, resumeName)
+                                "Telegram" -> pdfExporter.shareResumeViaTelegram(context, pdfUri, resumeName)
+                                "Gmail" -> pdfExporter.shareResumeViaEmail(context, pdfUri, resumeName)
+                            }
+                            onDismiss()
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SharingOptionItem(
+    option: PdfExporter.SharingOption,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = option.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = option.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = option.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// Simple Template - Clean and minimal design
+@Composable
+private fun SimpleTemplatePreview(
+    resume: Resume,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Header Section - Minimal
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = resume.personal.fullName,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (resume.personal.title.isNotBlank()) {
+                Text(
+                    text = resume.personal.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Contact info in simple horizontal layout
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.wrapContentWidth()
+            ) {
+                if (resume.personal.email.isNotBlank()) {
+                    Text(
+                        text = resume.personal.email,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (resume.personal.phone.isNotBlank()) {
+                    Text(
+                        text = resume.personal.phone,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (resume.personal.location.isNotBlank()) {
+                    Text(
+                        text = resume.personal.location,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        
+        Divider(color = MaterialTheme.colorScheme.outline)
+        
+        // Summary Section
+        if (resume.summary.isNotBlank()) {
+            SimpleSection(
+                title = "Summary",
+                content = {
+                    Text(
+                        text = resume.summary,
+                        style = MaterialTheme.typography.bodyLarge,
+                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.4
+                    )
+                }
+            )
+        }
+        
+        // Skills Section
+        if (resume.skills.isNotEmpty()) {
+            SimpleSection(
+                title = "Skills",
+                content = {
+                    Text(
+                        text = resume.skills.joinToString(" • "),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            )
+        }
+        
+        // Experience Section
+        if (resume.experience.isNotEmpty()) {
+            SimpleSection(
+                title = "Experience",
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        resume.experience.forEach { experience ->
+                            SimpleExperienceItem(experience = experience)
+                        }
+                    }
+                }
+            )
+        }
+        
+        // Education Section
+        if (resume.education.isNotEmpty()) {
+            SimpleSection(
+                title = "Education",
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        resume.education.forEach { education ->
+                            SimpleEducationItem(education = education)
+                        }
+                    }
+                }
+            )
+        }
+        
+        // Projects Section
+        if (resume.projects.isNotEmpty()) {
+            SimpleSection(
+                title = "Projects",
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        resume.projects.forEach { project ->
+                            SimpleProjectItem(project = project)
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+// Modern Template - Contemporary design with cards
+@Composable
+private fun ModernTemplatePreview(
+    resume: Resume,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // Header Section with accent color
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = resume.personal.fullName,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                if (resume.personal.title.isNotBlank()) {
+                    Text(
+                        text = resume.personal.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Contact info in grid
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    if (resume.personal.email.isNotBlank()) {
+                        item {
+                            ModernContactItem(
+                                icon = Icons.Default.Email,
+                                text = resume.personal.email
+                            )
+                        }
+                    }
+                    if (resume.personal.phone.isNotBlank()) {
+                        item {
+                            ModernContactItem(
+                                icon = Icons.Default.Phone,
+                                text = resume.personal.phone
+                            )
+                        }
+                    }
+                    if (resume.personal.location.isNotBlank()) {
+                        item {
+                            ModernContactItem(
+                                icon = Icons.Default.LocationOn,
+                                text = resume.personal.location
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Summary Section
+        if (resume.summary.isNotBlank()) {
+            ModernSection(
+                title = "Professional Summary",
+                content = {
+                    Text(
+                        text = resume.summary,
+                        style = MaterialTheme.typography.bodyLarge,
+                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.4
+                    )
+                }
+            )
+        }
+        
+        // Skills Section
+        if (resume.skills.isNotEmpty()) {
+            ModernSection(
+                title = "Skills",
+                content = {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        resume.skills.forEach { skill ->
+                            item {
+                                Card(
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                    )
+                                ) {
+                                    Text(
+                                        text = skill,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+        
+        // Experience Section
+        if (resume.experience.isNotEmpty()) {
+            ModernSection(
+                title = "Work Experience",
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        resume.experience.forEach { experience ->
+                            ModernExperienceItem(experience = experience)
+                        }
+                    }
+                }
+            )
+        }
+        
+        // Education Section
+        if (resume.education.isNotEmpty()) {
+            ModernSection(
+                title = "Education",
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        resume.education.forEach { education ->
+                            ModernEducationItem(education = education)
+                        }
+                    }
+                }
+            )
+        }
+        
+        // Projects Section
+        if (resume.projects.isNotEmpty()) {
+            ModernSection(
+                title = "Projects",
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        resume.projects.forEach { project ->
+                            ModernProjectItem(project = project)
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+// Creative Template - Artistic and bold design
+@Composable
+private fun CreativeTemplatePreview(
+    resume: Resume,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Header Section with creative styling
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.secondary
+                        )
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                )
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = resume.personal.fullName,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                if (resume.personal.title.isNotBlank()) {
+                    Text(
+                        text = resume.personal.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Contact info with icons
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (resume.personal.email.isNotBlank()) {
+                        CreativeContactItem(
+                            icon = Icons.Default.Email,
+                            text = resume.personal.email
+                        )
+                    }
+                    if (resume.personal.phone.isNotBlank()) {
+                        CreativeContactItem(
+                            icon = Icons.Default.Phone,
+                            text = resume.personal.phone
+                        )
+                    }
+                    if (resume.personal.location.isNotBlank()) {
+                        CreativeContactItem(
+                            icon = Icons.Default.LocationOn,
+                            text = resume.personal.location
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Summary Section
+        if (resume.summary.isNotBlank()) {
+            CreativeSection(
+                title = "About Me",
+                content = {
+                    Text(
+                        text = resume.summary,
+                        style = MaterialTheme.typography.bodyLarge,
+                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.4
+                    )
+                }
+            )
+        }
+        
+        // Skills Section
+        if (resume.skills.isNotEmpty()) {
+            CreativeSection(
+                title = "Skills & Expertise",
+                content = {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        resume.skills.forEach { skill ->
+                            item {
+                                Surface(
+                                    modifier = Modifier.clip(RoundedCornerShape(20.dp)),
+                                    color = MaterialTheme.colorScheme.tertiaryContainer
+                                ) {
+                                    Text(
+                                        text = skill,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+        
+        // Experience Section
+        if (resume.experience.isNotEmpty()) {
+            CreativeSection(
+                title = "Professional Experience",
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        resume.experience.forEach { experience ->
+                            CreativeExperienceItem(experience = experience)
+                        }
+                    }
+                }
+            )
+        }
+        
+        // Education Section
+        if (resume.education.isNotEmpty()) {
+            CreativeSection(
+                title = "Education",
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        resume.education.forEach { education ->
+                            CreativeEducationItem(education = education)
+                        }
+                    }
+                }
+            )
+        }
+        
+        // Projects Section
+        if (resume.projects.isNotEmpty()) {
+            CreativeSection(
+                title = "Featured Projects",
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        resume.projects.forEach { project ->
+                            CreativeProjectItem(project = project)
+                        }
+                    }
+                }
+            )
         }
     }
 }

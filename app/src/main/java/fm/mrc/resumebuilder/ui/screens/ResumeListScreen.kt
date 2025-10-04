@@ -381,7 +381,7 @@ private fun ResumeListItem(
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                             contentDescription = if (isExpanded) "Collapse" else "Expand",
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant

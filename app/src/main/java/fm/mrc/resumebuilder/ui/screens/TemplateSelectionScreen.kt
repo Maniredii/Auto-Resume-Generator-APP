@@ -1,18 +1,14 @@
 package fm.mrc.resumebuilder.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,108 +18,82 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import fm.mrc.resumebuilder.data.model.ResumeTemplate
-import fm.mrc.resumebuilder.data.model.TemplateCategory
 import fm.mrc.resumebuilder.data.template.TemplateManager
+import fm.mrc.resumebuilder.data.model.ResumeTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TemplateSelectionScreen(
-    onNavigateBack: () -> Unit,
-    onTemplateSelected: (ResumeTemplate) -> Unit,
-    modifier: Modifier = Modifier
+    onTemplateSelected: (String) -> Unit,
+    onNavigateBack: () -> Unit
 ) {
-    var selectedCategory by remember { mutableStateOf<TemplateCategory?>(null) }
-    var showPremiumOnly by remember { mutableStateOf(false) }
-    
-    val templates = remember(selectedCategory, showPremiumOnly) {
-        val allTemplates = TemplateManager.getAllTemplates()
-        when {
-            selectedCategory != null -> TemplateManager.getTemplatesByCategory(selectedCategory!!)
-            showPremiumOnly -> TemplateManager.getPremiumTemplates()
-            else -> allTemplates
-        }
-    }
-    
+    val availableTemplates = remember { TemplateManager.getAllTemplates() }
+    var selectedTemplate by remember { mutableStateOf("simple") }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Choose Template") },
+                title = { 
+                    Text(
+                        text = "Choose Template",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
-                },
-                actions = {
-                    FilterChip(
-                        onClick = { showPremiumOnly = !showPremiumOnly },
-                        label = { Text("Premium") },
-                        selected = showPremiumOnly
-                    )
                 }
             )
         }
     ) { paddingValues ->
         Column(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Category Filter
-            CategoryFilter(
-                selectedCategory = selectedCategory,
-                onCategorySelected = { selectedCategory = it }
+            Text(
+                text = "Select a template for your resume",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
-            // Templates Grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+
+            LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(templates) { template ->
+                items(availableTemplates) { template ->
                     TemplateCard(
                         template = template,
-                        onClick = { onTemplateSelected(template) }
+                        isSelected = selectedTemplate == template.id,
+                        onClick = { selectedTemplate = template.id }
                     )
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun CategoryFilter(
-    selectedCategory: TemplateCategory?,
-    onCategorySelected: (TemplateCategory?) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val categories = listOf(
-        null to "All",
-        TemplateCategory.MODERN to "Modern",
-        TemplateCategory.CLASSIC to "Classic",
-        TemplateCategory.CREATIVE to "Creative",
-        TemplateCategory.MINIMALIST to "Minimalist",
-        TemplateCategory.PROFESSIONAL to "Professional",
-        TemplateCategory.TECH to "Tech",
-        TemplateCategory.BUSINESS to "Business",
-        TemplateCategory.HEALTHCARE to "Healthcare",
-        TemplateCategory.ACADEMIC to "Academic"
-    )
-    
-    LazyRow(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(categories) { (category, name) ->
-            FilterChip(
-                onClick = { onCategorySelected(category) },
-                label = { Text(name) },
-                selected = selectedCategory == category
-            )
+            Spacer(modifier = Modifier.weight(1f))
+
+            Button(
+                onClick = { onTemplateSelected(selectedTemplate) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(
+                    text = "Continue with Template",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
@@ -131,108 +101,102 @@ private fun CategoryFilter(
 @Composable
 private fun TemplateCard(
     template: ResumeTemplate,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    isSelected: Boolean,
+    onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 8.dp else 2.dp
+        ),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Template Preview
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(template.previewColor.copy(alpha = 0.1f))
-                    .border(
-                        width = 2.dp,
-                        color = template.previewColor,
-                        shape = RoundedCornerShape(8.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                // Simple preview representation
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(template.previewColor)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(60.dp)
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(template.previewColor)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(template.previewColor.copy(alpha = 0.7f))
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Template Info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = template.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = template.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                if (template.isPremium) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Premium",
-                        tint = Color(0xFFFFD700),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Category Badge
+            // Template preview color
             Surface(
-                color = template.previewColor.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = template.previewColor
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = template.name.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = template.category.name.lowercase().replaceFirstChar { it.uppercase() },
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = template.previewColor,
-                    fontWeight = FontWeight.Medium
+                    text = template.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
+                Text(
+                    text = template.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+                if (template.isPremium) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondary,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "Premium",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondary
+                        )
+                    }
+                }
+            }
+
+            // Selection indicator
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Text(
+                    text = "○",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

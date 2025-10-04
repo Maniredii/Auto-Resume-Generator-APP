@@ -14,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,10 +34,13 @@ import fm.mrc.resumebuilder.ui.viewmodel.ResumeViewModel
 import fm.mrc.resumebuilder.utils.PdfExporter
 import fm.mrc.resumebuilder.utils.PdfExportHelper
 import fm.mrc.resumebuilder.utils.XmlTemplateRenderer
+import fm.mrc.resumebuilder.ui.templates.*
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import android.net.Uri
 import kotlinx.coroutines.launch
@@ -48,6 +50,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ResumePreviewScreen(
     resumeId: String,
+    template: String = "simple",
     onNavigateBack: () -> Unit,
     onNavigateToEdit: () -> Unit,
     viewModel: ResumeViewModel = viewModel()
@@ -98,6 +101,7 @@ fun ResumePreviewScreen(
                     pdfExporter, 
                     createResumeFromState(), 
                     uiState,
+                    uiState.template,
                     onSuccess = { 
                         isExporting = false
                         showSuccessDialog = true
@@ -126,6 +130,7 @@ fun ResumePreviewScreen(
                     pdfExporter, 
                     createResumeFromState(), 
                     uiState,
+                    uiState.template,
                     onSuccess = { 
                         isExporting = false
                         showSuccessDialog = true
@@ -235,7 +240,7 @@ fun ResumePreviewScreen(
                                     exportError = null
                                     try {
                                         val resume = createResumeFromState()
-                                        val generatedPdfUri = pdfExporter.exportResumeToPdf(context, resume)
+                                        val generatedPdfUri = pdfExporter.exportResumeToPdf(context, resume, uiState.template)
                                         pdfUri = generatedPdfUri
                                         showShareDialog = true
                                     } catch (e: Exception) {
@@ -1032,7 +1037,7 @@ private fun SimpleTemplatePreview(
             }
         }
         
-        Divider(color = MaterialTheme.colorScheme.outline)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         
         // Summary Section
         if (resume.summary.isNotBlank()) {

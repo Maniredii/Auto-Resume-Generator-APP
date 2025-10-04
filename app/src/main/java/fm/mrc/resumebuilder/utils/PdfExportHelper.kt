@@ -20,12 +20,13 @@ class PdfExportHelper {
         pdfExporter: PdfExporter,
         resume: Resume,
         uiState: ResumeUiState,
+        templateId: String = "simple",
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
         withContext(Dispatchers.IO) {
             try {
-                val pdfUri = pdfExporter.exportResumeToPdf(context, resume)
+                val pdfUri = pdfExporter.exportResumeToPdf(context, resume, templateId)
                 
                 // Try to open the PDF directly in a PDF viewer
                 val intent = Intent(Intent.ACTION_VIEW).apply {

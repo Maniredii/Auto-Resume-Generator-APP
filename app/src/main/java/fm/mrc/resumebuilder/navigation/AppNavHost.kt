@@ -42,7 +42,10 @@ object AppRoutes {
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    database: ResumeDatabase
+    database: ResumeDatabase,
+    selectedTemplate: String = "simple",
+    onTemplateSelected: (String) -> Unit = {},
+    onShowTemplateDialog: () -> Unit = {}
 ) {
     val repository = ResumeRepositoryImpl(database.resumeDao())
     
@@ -140,6 +143,7 @@ fun AppNavHost(
             
             ResumePreviewScreen(
                 resumeId = resumeId,
+                template = selectedTemplate,
                 onNavigateBack = {
                     navController.popBackStack()
                 },

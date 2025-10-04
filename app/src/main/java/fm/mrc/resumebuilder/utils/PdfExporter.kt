@@ -52,130 +52,14 @@ class PdfExporter {
      * Exports a resume to PDF format
      * @param context Android context
      * @param resume Resume data to export
+     * @param templateId Template ID to use for formatting
      * @return Uri pointing to the generated PDF file
      */
-    suspend fun exportResumeToPdf(context: Context, resume: Resume): Uri {
+    suspend fun exportResumeToPdf(context: Context, resume: Resume, templateId: String = "simple"): Uri {
         return withContext(Dispatchers.IO) {
-            val pdfDocument = PdfDocument()
-            var currentPage = 1
-            var currentY = MARGIN_TOP.toFloat()
-            
-            // Start first page
-            val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, currentPage).create()
-            var page = pdfDocument.startPage(pageInfo)
-            var canvas = page.canvas
-            
-            // Create paint objects for different text styles
-            val titlePaint = createPaint(TITLE_SIZE, Typeface.BOLD)
-            val subtitlePaint = createPaint(SUBTITLE_SIZE, Typeface.NORMAL)
-            val sectionHeaderPaint = createPaint(SECTION_HEADER_SIZE, Typeface.BOLD)
-            val bodyPaint = createPaint(BODY_SIZE, Typeface.NORMAL)
-            val boldBodyPaint = createPaint(BODY_SIZE, Typeface.BOLD)
-            val smallPaint = createPaint(SMALL_SIZE, Typeface.NORMAL)
-            
-            // Helper function to check if we need a new page
-            fun checkNewPage(neededHeight: Float): Pair<PdfDocument.Page, Canvas> {
-                if (currentY + neededHeight > PAGE_HEIGHT - MARGIN_BOTTOM) {
-                    pdfDocument.finishPage(page)
-                    currentPage++
-                    val newPageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, currentPage).create()
-                    page = pdfDocument.startPage(newPageInfo)
-                    canvas = page.canvas
-                    currentY = MARGIN_TOP.toFloat()
-                }
-                return Pair(page, canvas)
-            }
-            
-            // Draw header section
-            currentY = drawHeader(context, canvas, resume, titlePaint, subtitlePaint, smallPaint, currentY)
-            currentY += SECTION_SPACING
-            
-            // Draw summary section
-            if (resume.summary.isNotBlank()) {
-                val (newPage, newCanvas) = checkNewPage(60f)
-                page = newPage
-                canvas = newCanvas
-                currentY = drawSection(canvas, "PROFESSIONAL SUMMARY", resume.summary, 
-                    sectionHeaderPaint, bodyPaint, currentY)
-                currentY += SECTION_SPACING
-            }
-            
-            // Draw skills section
-            if (resume.skills.isNotEmpty()) {
-                val (newPage, newCanvas) = checkNewPage(80f)
-                page = newPage
-                canvas = newCanvas
-                currentY = drawSkillsSection(canvas, resume.skills, sectionHeaderPaint, bodyPaint, currentY)
-                currentY += SECTION_SPACING
-            }
-            
-            // Draw experience section
-            if (resume.experience.isNotEmpty()) {
-                val (newPage, newCanvas) = checkNewPage(100f)
-                page = newPage
-                canvas = newCanvas
-                currentY = drawExperienceSection(canvas, resume.experience, sectionHeaderPaint, 
-                    boldBodyPaint, bodyPaint, smallPaint, currentY) { height ->
-                    val (p, c) = checkNewPage(height)
-                    page = p
-                    canvas = c
-                    currentY = MARGIN_TOP.toFloat()
-                    currentY
-                }
-                currentY += SECTION_SPACING
-            }
-            
-            // Draw education section
-            if (resume.education.isNotEmpty()) {
-                val (newPage, newCanvas) = checkNewPage(80f)
-                page = newPage
-                canvas = newCanvas
-                currentY = drawEducationSection(canvas, resume.education, sectionHeaderPaint, 
-                    boldBodyPaint, bodyPaint, smallPaint, currentY) { height ->
-                    val (p, c) = checkNewPage(height)
-                    page = p
-                    canvas = c
-                    currentY = MARGIN_TOP.toFloat()
-                    currentY
-                }
-                currentY += SECTION_SPACING
-            }
-            
-            // Draw projects section
-            if (resume.projects.isNotEmpty()) {
-                val (newPage, newCanvas) = checkNewPage(100f)
-                page = newPage
-                canvas = newCanvas
-                currentY = drawProjectsSection(canvas, resume.projects, sectionHeaderPaint, 
-                    boldBodyPaint, bodyPaint, smallPaint, currentY) { height ->
-                    val (p, c) = checkNewPage(height)
-                    page = p
-                    canvas = c
-                    currentY = MARGIN_TOP.toFloat()
-                    currentY
-                }
-            }
-            
-            // Finish the last page
-            pdfDocument.finishPage(page)
-            
-            // Save to file
-            val fileName = "${resume.personal.fullName.ifBlank { "Resume" }}_${
-                SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            }.pdf"
-            
-            val file = File(context.cacheDir, fileName)
-            FileOutputStream(file).use { outputStream ->
-                pdfDocument.writeTo(outputStream)
-            }
-            pdfDocument.close()
-            
-            // Return content URI via FileProvider
-            FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
+            // Use the template-aware PDF exporter
+            val templateAwareExporter = TemplateAwarePdfExporter()
+            templateAwareExporter.exportResumeToPdf(context, resume, templateId)
         }
     }
     

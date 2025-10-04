@@ -1,13 +1,20 @@
 package fm.mrc.resumebuilder.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -25,6 +33,7 @@ import coil.request.ImageRequest
 import fm.mrc.resumebuilder.data.model.*
 import fm.mrc.resumebuilder.ui.viewmodel.ResumeViewModel
 import fm.mrc.resumebuilder.utils.PdfExporter
+import fm.mrc.resumebuilder.utils.PdfExportHelper
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 
@@ -43,9 +52,12 @@ fun ResumePreviewScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val pdfExporter = remember { PdfExporter() }
+    val pdfExportHelper = remember { PdfExportHelper() }
     
     var isExporting by remember { mutableStateOf(false) }
     var exportError by remember { mutableStateOf<String?>(null) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
     
     // Helper function to create Resume from UI state
     fun createResumeFromState(): Resume {
@@ -63,6 +75,86 @@ fun ResumePreviewScreen(
             experience = uiState.experience,
             projects = uiState.projects
         )
+    }
+    
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permission granted, proceed with PDF export
+            scope.launch {
+                pdfExportHelper.exportToPdf(
+                    context, 
+                    pdfExporter, 
+                    createResumeFromState(), 
+                    uiState,
+                    onSuccess = { 
+                        isExporting = false
+                        showSuccessDialog = true
+                    },
+                    onError = { error ->
+                        isExporting = false
+                        exportError = error
+                    }
+                )
+            }
+        } else {
+            isExporting = false
+            exportError = "Storage permission is required to save PDF files"
+        }
+    }
+    
+    // Helper function to check and request permissions
+    fun checkPermissionsAndExport() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // For Android 11+, we don't need WRITE_EXTERNAL_STORAGE
+            scope.launch {
+                isExporting = true
+                exportError = null
+                pdfExportHelper.exportToPdf(
+                    context, 
+                    pdfExporter, 
+                    createResumeFromState(), 
+                    uiState,
+                    onSuccess = { 
+                        isExporting = false
+                        showSuccessDialog = true
+                    },
+                    onError = { error ->
+                        isExporting = false
+                        exportError = error
+                    }
+                )
+            }
+        } else {
+            // For Android 10 and below, check WRITE_EXTERNAL_STORAGE permission
+            when (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                PackageManager.PERMISSION_GRANTED -> {
+                    scope.launch {
+                        isExporting = true
+                        exportError = null
+                        pdfExportHelper.exportToPdf(
+                            context, 
+                            pdfExporter, 
+                            createResumeFromState(), 
+                            uiState,
+                            onSuccess = { 
+                                isExporting = false
+                                showSuccessDialog = true
+                            },
+                            onError = { error ->
+                                isExporting = false
+                                exportError = error
+                            }
+                        )
+                    }
+                }
+                else -> {
+                    permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }
+        }
     }
 
     // Load resume
@@ -92,7 +184,7 @@ fun ResumePreviewScreen(
                 title = { Text("Resume Preview") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -152,41 +244,12 @@ fun ResumePreviewScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Share")
                     }
-                    Button(
-                        onClick = {
-                            if (!isExporting && uiState.id.isNotBlank()) {
-                                scope.launch {
-                                    isExporting = true
-                                    exportError = null
-                                    try {
-                                        val resume = createResumeFromState()
-                                        val pdfUri = pdfExporter.exportResumeToPdf(context, resume)
-                                        
-                                        // Open the PDF directly in a PDF viewer
-                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                            setDataAndType(pdfUri, "application/pdf")
-                                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                        
-                                        try {
-                                            context.startActivity(intent)
-                                        } catch (e: Exception) {
-                                            // Fallback to share if no PDF viewer available
-                                            pdfExporter.shareResumePdf(
-                                                context, 
-                                                pdfUri, 
-                                                resume.personal.fullName.ifBlank { "Resume" }
-                                            )
-                                        }
-                                    } catch (e: Exception) {
-                                        exportError = e.message
-                                    } finally {
-                                        isExporting = false
-                                    }
+                        Button(
+                            onClick = {
+                                if (!isExporting && uiState.id.isNotBlank()) {
+                                    checkPermissionsAndExport()
                                 }
-                            }
-                        },
+                            },
                         modifier = Modifier.weight(1f),
                         enabled = !isExporting && uiState.id.isNotBlank()
                     ) {
@@ -243,6 +306,34 @@ fun ResumePreviewScreen(
                 }
             }
         }
+    }
+    
+    // Success dialog
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { showSuccessDialog = false },
+            title = { Text("PDF Exported Successfully") },
+            text = { Text("Your resume has been exported as PDF and saved to your device.") },
+            confirmButton = {
+                TextButton(onClick = { showSuccessDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+    
+    // Error dialog
+    exportError?.let { error ->
+        AlertDialog(
+            onDismissRequest = { exportError = null },
+            title = { Text("Export Error") },
+            text = { Text(error) },
+            confirmButton = {
+                TextButton(onClick = { exportError = null }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 
@@ -373,7 +464,7 @@ private fun ResumeHeader(
         // Contact Information
         ContactInfoGrid(personal = personal)
 
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.padding(vertical = 16.dp),
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
         )

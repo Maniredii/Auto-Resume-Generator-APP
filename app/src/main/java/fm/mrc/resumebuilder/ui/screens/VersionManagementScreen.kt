@@ -120,7 +120,7 @@ private fun EmptyVersionsState(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = Icons.Default.History,
+            imageVector = Icons.Default.List,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -277,7 +277,7 @@ private fun VersionCard(
                                 showMenu = false
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.CompareArrows, contentDescription = null)
+                                Icon(Icons.Default.Info, contentDescription = null)
                             }
                         )
                         

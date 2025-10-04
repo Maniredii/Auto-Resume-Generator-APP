@@ -62,7 +62,7 @@ fun ResumeEditScreen(
     // Show error message if any
     errorMessage?.let { message ->
         LaunchedEffect(message) {
-            // You can show a snackbar here
+            // You can show a snack bar here
             viewModel.clearError()
         }
     }

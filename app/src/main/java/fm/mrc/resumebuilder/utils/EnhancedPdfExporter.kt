@@ -262,7 +262,7 @@ class EnhancedPdfExporter {
     ): Paint {
         return Paint().apply {
             this.textSize = textSize
-            this.typeface = Typeface.create(customization.fontSettings.primaryFont, typeface)
+            this.typeface = Typeface.DEFAULT
             this.color = color.toArgb()
             isAntiAlias = true
         }
@@ -436,7 +436,7 @@ class EnhancedPdfExporter {
         canvas.drawLine(
             customization.margins.left,
             currentY,
-            pageWidth - customization.margins.right,
+            customization.margins.left + contentWidth,
             currentY,
             linePaint
         )
@@ -523,28 +523,20 @@ class EnhancedPdfExporter {
         
         for (exp in experience) {
             // Job title and company
-            val titleText = "${exp.title} at ${exp.company}"
+            val titleText = "${exp.role} at ${exp.company}"
             canvas.drawText(titleText, customization.margins.left, currentY, bodyPaint)
             currentY += bodyPaint.textSize + 5f
             
-            // Duration and location
-            val durationText = "${exp.startDate} - ${exp.endDate ?: "Present"}"
-            if (exp.location.isNotBlank()) {
-                val locationText = "$durationText • ${exp.location}"
-                canvas.drawText(locationText, customization.margins.left, currentY, smallPaint)
-            } else {
-                canvas.drawText(durationText, customization.margins.left, currentY, smallPaint)
-            }
+            // Duration
+            val durationText = "${exp.start} - ${exp.end}"
+            canvas.drawText(durationText, customization.margins.left, currentY, smallPaint)
             currentY += smallPaint.textSize + 5f
             
-            // Description
-            if (exp.description.isNotBlank()) {
-                val lines = exp.description.split("\n")
-                for (line in lines) {
-                    if (line.isNotBlank()) {
-                        canvas.drawText(line.trim(), customization.margins.left, currentY, bodyPaint)
-                        currentY += bodyPaint.textSize + 3f
-                    }
+            // Bullets
+            for (bullet in exp.bullets) {
+                if (bullet.isNotBlank()) {
+                    canvas.drawText("• $bullet", customization.margins.left, currentY, bodyPaint)
+                    currentY += bodyPaint.textSize + 3f
                 }
             }
             currentY += 10f
@@ -579,21 +571,20 @@ class EnhancedPdfExporter {
             canvas.drawText(degreeText, customization.margins.left, currentY, bodyPaint)
             currentY += bodyPaint.textSize + 5f
             
-            // Duration and location
-            val durationText = "${edu.startDate} - ${edu.endDate ?: "Present"}"
-            if (edu.location.isNotBlank()) {
-                val locationText = "$durationText • ${edu.location}"
-                canvas.drawText(locationText, customization.margins.left, currentY, smallPaint)
-            } else {
-                canvas.drawText(durationText, customization.margins.left, currentY, smallPaint)
-            }
+            // Duration
+            val durationText = "${edu.start} - ${edu.end}"
+            canvas.drawText(durationText, customization.margins.left, currentY, smallPaint)
             currentY += smallPaint.textSize + 5f
             
-            // GPA if available
-            if (edu.gpa != null && edu.gpa > 0) {
-                val gpaText = "GPA: ${edu.gpa}"
-                canvas.drawText(gpaText, customization.margins.left, currentY, smallPaint)
-                currentY += smallPaint.textSize + 5f
+            // Details
+            if (edu.details.isNotBlank()) {
+                val lines = edu.details.split("\n")
+                for (line in lines) {
+                    if (line.isNotBlank()) {
+                        canvas.drawText(line.trim(), customization.margins.left, currentY, bodyPaint)
+                        currentY += bodyPaint.textSize + 3f
+                    }
+                }
             }
             
             currentY += 10f
@@ -623,14 +614,16 @@ class EnhancedPdfExporter {
         currentY += sectionHeaderPaint.textSize + 10f
         
         for (project in projects) {
-            // Project name
-            canvas.drawText(project.name, customization.margins.left, currentY, bodyPaint)
+            // Project title
+            canvas.drawText(project.title, customization.margins.left, currentY, bodyPaint)
             currentY += bodyPaint.textSize + 5f
             
-            // Duration
-            val durationText = "${project.startDate} - ${project.endDate ?: "Present"}"
-            canvas.drawText(durationText, customization.margins.left, currentY, smallPaint)
-            currentY += smallPaint.textSize + 5f
+            // Tech stack
+            if (project.tech.isNotEmpty()) {
+                val techText = "Tech: ${project.tech.joinToString(", ")}"
+                canvas.drawText(techText, customization.margins.left, currentY, smallPaint)
+                currentY += smallPaint.textSize + 5f
+            }
             
             // Description
             if (project.description.isNotBlank()) {
@@ -642,6 +635,13 @@ class EnhancedPdfExporter {
                     }
                 }
             }
+            
+            // Link
+            if (project.link.isNotBlank()) {
+                canvas.drawText(project.link, customization.margins.left, currentY, smallPaint)
+                currentY += smallPaint.textSize + 5f
+            }
+            
             currentY += 10f
         }
         
